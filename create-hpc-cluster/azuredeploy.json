@@ -10,6 +10,14 @@
         "description": "The HPC Pack cluster name. It must be unique in the location because it is also used as the public DNS name prefix for the cluster. For example, the public DNS name is '&lt;clustername&gt;.westus.cloudapp.azure.com' if the resource group location is 'West US'. It must contain between 3 and 15 characters with lowercase letters and numbers, and must start with a letter."
       }
     },
+    "MyVirtualNetworkName": {
+      "type": "string",
+      "defaultValue": "kop-hpc-vnet",
+      "metadata": {
+        "description": "default vnet for HPC cluster"
+      }
+    },
+
     "privateDomainName": {
       "type": "string",
       "defaultValue": "hpc.local",
@@ -196,7 +204,7 @@
     }
   },
   "variables": {
-    "virtualNetworkName": "[concat(parameters('clusterName'), 'VNet')]",
+    "virtualNetworkName": "[parameters('MyVirtualNetworkName')]",
     "storageAccountNamePrefix": "[toLower(concat('hpc', uniqueString(resourceGroup().id, toLower(parameters('clusterName')))))]",
     "storageAccountType": "Standard_LRS",
     "publicIPAddressName": "[concat(parameters('clusterName'), '-PublicIP-HN')]",
@@ -214,7 +222,7 @@
       }
     },
     "currentComputeNodeImage": "[variables('computeNodeImages')[parameters('computeNodeImage')]]",
-    "artifactsBaseUrl": "https://raw.githubusercontent.com/Azure/azure-quickstart-templates/master/create-hpc-cluster"
+    "artifactsBaseUrl": "https://raw.githubusercontent.com/skoporulin/azure-quickstart-templates/master/create-hpc-cluster"
   },
   "resources": [
     {
