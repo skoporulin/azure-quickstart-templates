@@ -135,7 +135,7 @@
                 "function": "JoinAD"
               },
               "configurationArguments": {
-                "Domain": "[parameters('privateDomainName')]",
+                "DomainName": "[parameters('privateDomainName')]",
                 "MachineName": "[parameters('vmName')]"
               }
             },
