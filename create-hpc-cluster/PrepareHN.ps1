@@ -10,6 +10,9 @@
     [Parameter(Mandatory=$true, ParameterSetName='NodePrepare')]
     [String] $AdminBase64Password,
 
+    [Parameter(Mandatory=$true, ParameterSetName='NodePrepare')]
+    [String] $PublicDnsName,
+
     [Parameter(Mandatory=$false, ParameterSetName='NodePrepare')]
     [String] $SubscriptionId,
 
@@ -119,7 +122,7 @@ else
     [Environment]::SetEnvironmentVariable("HPCHNDeployRoot", $HPCHNDeployRoot, [System.EnvironmentVariableTarget]::Process)
     [Environment]::SetEnvironmentVariable("HPCInfoLogFile", $HPCInfoLogFile, [System.EnvironmentVariableTarget]::Process)
 
-    TraceInfo "Configuring head node: -DomainFQDN $DomainFQDN -AdminUserName $AdminUserName -CNSize $CNSize -UnsecureDNSUpdate:$UnsecureDNSUpdate -PostConfigScript $PostConfigScript"
+    TraceInfo "Configuring head node: -DomainFQDN $DomainFQDN -PublicDnsName $PublicDnsName -AdminUserName $AdminUserName -CNSize $CNSize -UnsecureDNSUpdate:$UnsecureDNSUpdate -PostConfigScript $PostConfigScript"
     if(Test-Path -Path $configFlagFile)
     {
         TraceInfo 'This head node was already configured'
@@ -151,7 +154,7 @@ else
                 -ArgumentList @("$domainNetBios\$AdminUserName", (ConvertTo-SecureString -String $AdminPassword -AsPlainText -Force))
 
          $job = Start-Job -ScriptBlock {
-             param($scriptPath, $domainUserCred, $AzureStorageConnStr, $DomainFQDN, $CNSize)
+             param($scriptPath, $domainUserCred, $AzureStorageConnStr, $PublicDnsName, $CNSize)
 
              function TraceInfo($log)
              {
@@ -299,16 +302,16 @@ else
                  }
 
                  $hpcBinPath = [System.IO.Path]::Combine($env:CCP_HOME, 'Bin')
-                 $restWebCert = Get-ChildItem -Path Cert:\LocalMachine\My | ?{($_.Subject -eq "CN=$DomainFQDN") -and $_.HasPrivateKey} | select -First(1)
+                 $restWebCert = Get-ChildItem -Path Cert:\LocalMachine\My | ?{($_.Subject -eq "CN=$PublicDnsName") -and $_.HasPrivateKey} | select -First(1)
                  if($null -eq $restWebCert)
                  {
-                     TraceInfo "Generating a self-signed certificate(CN=$DomainFQDN) for the HPC web service ..."
-                     $thumbprint = . $hpcBinPath\New-HpcCert.ps1 -MachineName $DomainFQDN -SelfSigned
+                     TraceInfo "Generating a self-signed certificate(CN=$PublicDnsName) for the HPC web service ..."
+                     $thumbprint = . $hpcBinPath\New-HpcCert.ps1 -MachineName $PublicDnsName -SelfSigned
                      TraceInfo "A self-signed certificate $thumbprint was created and installed"
                  }
                  else
                  {
-                     TraceInfo "Use the existing certificate $thumbprint (CN=$DomainFQDN) for the HPC web service."
+                     TraceInfo "Use the existing certificate $thumbprint (CN=$PublicDnsName) for the HPC web service."
                      $thumbprint = $restWebCert.Thumbprint
                  }
 
@@ -375,7 +378,7 @@ else
                  TraceInfo 'Failed to prepare HPC Head Node'
                  throw "Failed to prepare HPC Head Node"
              }
-        } -ArgumentList $PSScriptRoot,$domainUserCred, $AzureStorageConnStr, $CNSize
+        } -ArgumentList $PSScriptRoot,$domainUserCred, $AzureStorageConnStr, $PublicDnsName, $CNSize
 
          if($domainRole -eq 5)
          {
