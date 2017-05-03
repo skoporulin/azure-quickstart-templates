@@ -224,7 +224,8 @@
     "adminBase64Password": "[base64(parameters('adminPassword'))]",
     "iaasInfoArg": "[concat('-SubscriptionId ', subscription().subscriptionId, ' -VNet ', parameters('virtualNetworkName'), ' -Subnet ', variables('subnet1Name'), ' -Location \"', resourceGroup().location, '\" -ResourceGroup ', resourceGroup().name)]",
     "headNodeCommandStr": "[concat('powershell.exe -ExecutionPolicy Unrestricted -File PrepareHN.ps1 -DomainFQDN ', parameters('privateDomainName'), ' -AdminUserName ', parameters('adminUsername'), ' -AdminBase64Password \"', variables('adminBase64Password'), '\" -CNSize ', parameters('computeNodeVMSize'), ' -PostConfigScript \"', base64(trim(parameters('headNodePostConfigScript'))), '\" ', variables('iaasInfoArg'))]",
-    "hnStorageConnStrPrefix": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('hnStorageAccountName'), ';AccountKey=')]"
+    "hnStorageConnStrPrefix": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('hnStorageAccountName'), ';AccountKey=')]",
+    "clusterDNSname": "[concat(parameters('clusterName'), '.', parameters('privateDomainName')]"
   },
   "resources": [
     {
@@ -238,51 +239,18 @@
     },
     
     {
-      "name": "setupClusterPublicIP",
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2015-01-01",
-      "properties": {
-        "mode": "Incremental",
-        "templateLink": {
-          "uri": "[concat(parameters('artifactsBaseUrl'), '/publicip-', parameters('publicIPNewOrExisting'), '.json')]",
-          "contentVersion": "1.0.0.0"
-        },
-        "parameters": {
-          "apiVersion": {
-            "value": "[variables('apiVersion')]"
-          },
-          "publicIPAddressName": {
-            "value": "[parameters('publicIPName')]"
-          },
-          "publicIPAddressType": {
-            "value": "[variables('publicIPAddressType')]"
-          },
-          "domainNameLabel": {
-            "value": "[parameters('publicIPDNSNameLabel')]"
-          },
-          "publicIPRGName": {
-            "value": "[parameters('publicIpRGName')]"
-          }
-        }
-      }
-    },
-    {
       "apiVersion": "[variables('apiVersion')]",
       "type": "Microsoft.Network/networkInterfaces",
       "name": "[variables('nicNameHN')]",
       "location": "[resourceGroup().location]",
-      "dependsOn": [
-        "Microsoft.Resources/deployments/setupClusterPublicIP"
-      ],
+
       "properties": {
         "ipConfigurations": [
           {
             "name": "IPConfig",
             "properties": {
               "privateIPAllocationMethod": "Dynamic",
-              "publicIPAddress": {
-                "id": "[reference('setupClusterPublicIP').outputs.resourceId.value]"
-              },
+              
               "subnet": {
                 "id": "[variables('subnetRef')]"
               }
@@ -364,51 +332,10 @@
       }
     },
     {
-      "apiVersion": "2015-01-01",
-      "type": "Microsoft.Resources/deployments",
-      "name": "updateVNetDNS",
-      "dependsOn": [
-        "Microsoft.Resources/deployments/createHeadNode"
-      ],
-      "properties": {
-        "mode": "Incremental",
-        "templateLink": {
-          "uri": "[concat(parameters('artifactsBaseUrl'),'/vnet-with-dns-server.json')]",
-          "contentVersion": "1.0.0.0"
-        },
-        "parameters": {
-          "apiVersion": {
-            "value": "[variables('apiVersion')]"
-          },
-          "virtualNetworkName": {
-            "value": "[parameters('virtualNetworkName')]"
-          },
-          "virtualNetworkAddressRange": {
-            "value": "[variables('addressPrefix')]"
-          },
-          "subnetName": {
-            "value": "[variables('subnet1Name')]"
-          },
-          "subnetRange": {
-            "value": "[variables('subnet1Prefix')]"
-          },
-          "DNSServerAddress": {
-            "value": [
-              "10.0.0.4",
-              "8.8.8.8"
-            ]
-          }
-        }
-      }
-    },
-    {
       "type": "Microsoft.Compute/virtualMachines/extensions",
       "name": "[concat(parameters('clusterName'),'/configureHeadNode')]",
       "apiVersion": "[variables('apiVersion')]",
       "location": "[resourceGroup().location]",
-      "dependsOn": [
-        "Microsoft.Resources/deployments/updateVNetDNS"
-      ],
       "properties": {
         "publisher": "Microsoft.Compute",
         "type": "CustomScriptExtension",
@@ -421,7 +348,7 @@
           ]
         },
         "protectedSettings": {
-          "commandToExecute": "[concat(variables('headNodeCommandStr'), ' -AzureStorageConnStr \"', variables('hnStorageConnStrPrefix'), listKeys(variables('hnStorageAccountId'),variables('apiVersion')).key1, '\" -PublicDnsName ', reference('setupClusterPublicIP').outputs.fqdn.value)]"
+          "commandToExecute": "[concat(variables('headNodeCommandStr'), ' -AzureStorageConnStr \"', variables('hnStorageConnStrPrefix'), listKeys(variables('hnStorageAccountId'),variables('apiVersion')).key1, '\" -PublicDnsName ', variables('clusterDNSname')]"
         }
       }
     },
@@ -447,7 +374,6 @@
       "name": "[concat('create', parameters('computeNodeNamePrefix'), padLeft(string(copyIndex()), 3, '0'))]",
       "dependsOn": [
         "Microsoft.Resources/deployments/createAvailabilitySets",
-        "Microsoft.Resources/deployments/updateVNetDNS",
         "[concat('Microsoft.Storage/storageAccounts/', parameters('storageAccountNamePrefix'), padLeft(string(add(div(copyIndex(), parameters('nbrCNPerStorageAccount')), variables('cnStorageAccountStartIndex'))), variables('storageAccountIndexWidth'), '0'))]"
       ],
       "copy": {
@@ -522,7 +448,7 @@
   "outputs": {
     "clusterDNSName": {
       "type": "string",
-      "value": "[reference('setupClusterPublicIP').outputs.fqdn.value]"
+      "value": "[concat(parameters('clusterName'), '.', parameters('privateDomainName')]"
     }
   }
 }
