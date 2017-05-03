@@ -8,6 +8,12 @@
         "description": "The HPC Pack cluster name, also used as the host name of the head node. It must contain between 3 and 15 characters with lowercase letters and numbers, and must start with a letter."
       }
     },
+    "clusterDomainName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of the virtual network to be created. It must contain between 2 and 63 characters, start with a letter, end with a letter or number, and may contain only letters, numbers, underscores, periods, or hyphens."
+      }
+    },
     "virtualNetworkName": {
       "type": "string",
       "metadata": {
@@ -225,8 +231,7 @@
     "iaasInfoArg": "[concat('-SubscriptionId ', subscription().subscriptionId, ' -VNet ', parameters('virtualNetworkName'), ' -Subnet ', variables('subnet1Name'), ' -Location \"', resourceGroup().location, '\" -ResourceGroup ', resourceGroup().name)]",
     "headNodeCommandStr": "[concat('powershell.exe -ExecutionPolicy Unrestricted -File PrepareHN.ps1 -DomainFQDN ', parameters('privateDomainName'), ' -AdminUserName ', parameters('adminUsername'), ' -AdminBase64Password \"', variables('adminBase64Password'), '\" -CNSize ', parameters('computeNodeVMSize'), ' -PostConfigScript \"', base64(trim(parameters('headNodePostConfigScript'))), '\" ', variables('iaasInfoArg'))]",
     "hnStorageConnStrPrefix": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('hnStorageAccountName'), ';AccountKey=')]",
-    "bigspot": ".",   
-    "clusterDNSname": "[concat(parameters('clusterName'), variables('bigspot'), parameters('privateDomainName'))]"
+    "clusterDNSname": "[parameters('clusterDomainName')]"
   },
   "resources": [
     {
