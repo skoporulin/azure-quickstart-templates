@@ -454,7 +454,7 @@
   "outputs": {
     "clusterDNSName": {
       "type": "string",
-      "value": "[concat(parameters('clusterName'), '.', parameters('privateDomainName')]"
+      "value": "[parameters('clusterDomainName')]"
     }
   }
 }
